@@ -5,7 +5,7 @@
 export function up(knex) {
   return knex.schema.createTable("countries", (table) => {
     table.increments("id").primary(); // auto-generated ID
-    table.string("name").notNullable(); // required This is unique
+    table.string("name").notNullable().unique(); // required This is unique
     table.string("capital").nullable(); // optional
     table.string("region").nullable(); // optional
     table.bigInteger("population").notNullable(); // required
