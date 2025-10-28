@@ -33,65 +33,65 @@ app.post("/countries/refresh", async (req, res) => {
          await db("countries").insert(data).onConflict("name").merge();
          response[country.name] = data;
       }
-   }
+
 
       const totalCountries = (await db("countries").count("name as total"))[0].total;
-   const lastRefreshed = new Date();
-   const topCountries = await db("countries")
-      .select("name", "estimated_gdp")
-      .orderBy("estimated_gdp", "desc")
-      .limit(5);
+      const lastRefreshed = new Date();
+      const topCountries = await db("countries")
+         .select("name", "estimated_gdp")
+         .orderBy("estimated_gdp", "desc")
+         .limit(5);
 
-   // 🖼 Generate image summary
-   const width = 800;
-   const height = 400;
-   const canvas = createCanvas(width, height);
-   const ctx = canvas.getContext("2d");
+      // 🖼 Generate image summary
+      const width = 800;
+      const height = 400;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext("2d");
 
-   // Background
-   ctx.fillStyle = "#f0f8ff";
-   ctx.fillRect(0, 0, width, height);
+      // Background
+      ctx.fillStyle = "#f0f8ff";
+      ctx.fillRect(0, 0, width, height);
 
-   // Title
-   ctx.fillStyle = "#000";
-   ctx.font = "bold 28px Arial";
-   ctx.fillText("🌍 Countries Summary", 250, 50);
+      // Title
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 28px Arial";
+      ctx.fillText("🌍 Countries Summary", 250, 50);
 
-   // Total countries
-   ctx.font = "22px Arial";
-   ctx.fillText(`Total Countries: ${totalCountries}`, 80, 120);
+      // Total countries
+      ctx.font = "22px Arial";
+      ctx.fillText(`Total Countries: ${totalCountries}`, 80, 120);
 
-   // Top 5 GDP countries
-   ctx.fillText("Top 5 by Estimated GDP:", 80, 170);
-   ctx.font = "20px Arial";
-   topCountries.forEach((c, i) => {
-      const gdp =
-         typeof c.estimated_gdp === "number"
-            ? c.estimated_gdp.toFixed(2)
-            : Number(c.estimated_gdp || 0).toFixed(2);
-      ctx.fillText(`${i + 1}. ${c.name} — ${gdp}`, 100, 210 + i * 30);
-   });
+      // Top 5 GDP countries
+      ctx.fillText("Top 5 by Estimated GDP:", 80, 170);
+      ctx.font = "20px Arial";
+      topCountries.forEach((c, i) => {
+         const gdp =
+            typeof c.estimated_gdp === "number"
+               ? c.estimated_gdp.toFixed(2)
+               : Number(c.estimated_gdp || 0).toFixed(2);
+         ctx.fillText(`${i + 1}. ${c.name} — ${gdp}`, 100, 210 + i * 30);
+      });
 
 
-   // Timestamp
-   ctx.font = "18px Arial";
-   ctx.fillText(`Last Refreshed: ${lastRefreshed.toLocaleString()}`, 80, 360);
+      // Timestamp
+      ctx.font = "18px Arial";
+      ctx.fillText(`Last Refreshed: ${lastRefreshed.toLocaleString()}`, 80, 360);
 
-   // Ensure cache directory exists
-   if (!fs.existsSync("./cache")) {
-      fs.mkdirSync("./cache");
+      // Ensure cache directory exists
+      if (!fs.existsSync("./cache")) {
+         fs.mkdirSync("./cache");
+      }
+
+      const outputPath = "./cache/summary.png";
+      const buffer = canvas.toBuffer("image/png");
+      fs.writeFileSync(outputPath, buffer);
+
+      res.status(200).json(response);
    }
-
-   const outputPath = "./cache/summary.png";
-   const buffer = canvas.toBuffer("image/png");
-   fs.writeFileSync(outputPath, buffer);
-
-   res.status(200).json(response);
-}
    catch (error) {
-   res.status(503).json(`"error": "External data source unavailable", "details": "Could not fetch data from [API name]"`);
-   console.log(error);
-}
+      res.status(503).json(`"error": "External data source unavailable", "details": "Could not fetch data from [API name]"`);
+      console.log(error);
+   }
 
 
 
