@@ -1,0 +1,12 @@
+CREATE TABLE countries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    capital VARCHAR(255) NULL,
+    region VARCHAR(255) NULL,
+    population INT NOT NULL,
+    currency_code VARCHAR(3) NOT NULL,
+    exchange_rate DECIMAL(10, 4) NOT NULL,
+    estimated_gdp DECIMAL(15, 2) NOT NULL,
+    flag_url VARCHAR(500) NULL,
+    last_refreshed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

@@ -156,6 +156,7 @@ app.get("/status", async (req, res) => {
 app.get("/countries/image", (req, res) => {
    try {
       const imagePath = path.join(__dirname, "cache/summary.png");
+      console.log(imagePath);
       res.sendFile(imagePath);
    }
    catch (error) {

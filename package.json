@@ -4,7 +4,11 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "knex migrate:latest",
+    "seed": "knex seed:run",
+    "migrate:prod": "NODE_ENV=production knex migrate:latest",
+    "seed:prod": "NODE_ENV=production knex seed:run"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +18,7 @@
     "axios": "^1.12.2",
     "body-parser": "^2.2.0",
     "canvas": "^3.2.0",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mysql": "^2.18.1",
     "mysql2": "^3.15.3"
