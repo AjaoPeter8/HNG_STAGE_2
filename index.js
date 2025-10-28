@@ -4,15 +4,21 @@ import db from "./db.js";
 import axios from "axios";
 import { createCanvas } from "canvas";
 import fs from "fs";
+import path from 'path';
+import { fileURLToPath } from 'url';
 import knex from "knex";
 import config from "./knexfile.js";
 // import * as res from 'express/lib/response';
 
 const app = express();
 const port = 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
 
 
 
@@ -78,18 +84,18 @@ app.post("/countries/refresh", async (req, res) => {
       ctx.fillText(`Last Refreshed: ${lastRefreshed.toLocaleString()}`, 80, 360);
 
       // Ensure cache directory exists
-      if (!fs.existsSync("./cache")) {
-         fs.mkdirSync("./cache");
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) {
+         fs.mkdirSync(cacheDir);
       }
-
-      const outputPath = "./cache/summary.png";
+      const outputPath = path.join(__dirname, "cache", "summary.png");
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(outputPath, buffer);
 
       res.status(200).json(response);
    }
    catch (error) {
-      res.status(503).json(`"error": "External data source unavailable", "details": "Could not fetch data from [API name]"`);
+      res.status(503).json({ "error": "External data source unavailable", "details": "Could not fetch data from [API name]" });
       console.log(error);
    }
 
@@ -110,7 +116,7 @@ app.get("/countries", async (req, res) => {
       res.status(200).send(countries);
    }
    catch (error) {
-      `Failed to fetch`;
+      res.status(500).json({ "error": "Country not found" });
       console.log(error);
    }
 });
@@ -122,7 +128,7 @@ app.get("/countries/:name", async (req, res) => {
       res.status(200).send(country);
    }
    catch (error) {
-      res.status(404).json(`"error": "Country not found"`)
+      res.status(404).json({ "error": "Country not found" });
       console.log(error);
    }
 });
@@ -134,7 +140,7 @@ app.delete("/countries/:name", async (req, res) => {
       res.status(200).json(country);
    }
    catch (error) {
-      `Failed to fetch`;
+      res.status(500).json({ "error": "Failed to delete" });
       console.log(error);
    }
 });
@@ -149,7 +155,7 @@ app.get("/status", async (req, res) => {
       console.log(response)
    }
    catch (error) {
-      res.status(500).json(`"error": "Internal server error" `);
+      res.status(500).json({ "error": "Internal server error" });
       console.log(error);
    }
 
@@ -162,7 +168,7 @@ app.get("/countries/image", (req, res) => {
       res.sendFile(imagePath);
    }
    catch (error) {
-      res.status(500).json(`"error": "Summary image not found"`);
+      res.status(500).json({ "error": "Summary image not found" });
       console.log(error);
    }
 })
