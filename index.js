@@ -28,16 +28,7 @@ app.post("/countries/refresh", async (req, res) => {
          const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : "null";
          const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
          const data = { name: country.name, capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date().toISOString() };
-         const [name] = await db("countries").insert(data).onConflict("name").merge({
-            capital: db.raw("VALUES(capital)"),
-            region: db.raw("VALUES(region)"),
-            population: db.raw("VALUES(population)"),
-            currency_code: db.raw("VALUES(currency_code)"),
-            exchange_rate: db.raw("VALUES(exchange_rate)"),
-            estimated_gdp: db.raw("VALUES(estimated_gdp)"),
-            flag_url: db.raw("VALUES(flag_url)"),
-            last_refreshed_at: db.raw("VALUES(last_refreshed_at)")
-         });
+         const [name] = await db("countries").insert(data).onConflict("name").merge();
          ;
          response[name] = data;
       }
@@ -163,7 +154,14 @@ app.get("/status", async (req, res) => {
 })
 
 app.get("/countries/image", (req, res) => {
-   res.sendFile("./cache/summary.png");
+   try {
+      const imagePath = path.join(__dirname, "cache/summary.png");
+      res.sendFile(imagePath);
+   }
+   catch (error) {
+      res.status(500).json(`"error": "Summary image not found"`);
+      console.log(error);
+   }
 })
 
 

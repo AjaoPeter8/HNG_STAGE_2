@@ -1,5 +1,4 @@
+/migrations
 /node_modules
 /countries.db
-/db.js
 /knexfile.js
-./migrations
