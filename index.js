@@ -28,8 +28,6 @@ app.post("/countries/refresh", async (req, res) => {
    try {
       const response = {};
 
-      await db.raw('TRUNCATE TABLE countries');
-
       const country_data = await axios.get("https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies");
       const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
       const countries = country_data.data;
@@ -105,6 +103,25 @@ app.post("/countries/refresh", async (req, res) => {
 
 });
 
+app.get("/countries/image", (req, res) => {
+   try {
+      const imagePath = path.join(__dirname, "cache/summary.png");
+      console.log(imagePath);
+       // Check if file exists
+      if (!fs.existsSync(imagePath)) {
+         return res.status(404).json({ "error": "Summary image not found" });
+      }
+      
+      // Set correct content type for PNG image
+      res.setHeader('Content-Type', 'image/png');
+      res.status(200).json(imagePath);
+   }
+   catch (error) {
+      res.status(500).json({ "error": "Summary image not found" });
+      console.log(error);
+   }
+})
+
 app.get("/countries", async (req, res) => {
    try {
       const {sort, ...filters} = req.query;
@@ -130,7 +147,10 @@ app.get("/countries", async (req, res) => {
       }
 
       const countries = await query.select("*");
-      res.status(200).send(countries);
+      if (countries.length === 0) {
+         return res.status(404).json({ "error": "Country not found" });
+      }
+      res.status(200).json(countries);
    }
    catch (error) {
       res.status(500).json({ "error": "Country not found" });
@@ -142,10 +162,13 @@ app.get("/countries/:name", async (req, res) => {
    try {
       const name = req.params.name;
       const country = await db("countries").where("name", name).select("*");
-      res.status(200).send(country);
+      if (country.length === 0) {
+         return res.status(404).json({ "error": "Country not found" });
+      }
+      res.status(200).json(country);
    }
    catch (error) {
-      res.status(404).json({ "error": "Country not found" });
+      res.status(404).json({ "error": "data" });
       console.log(error);
    }
 });
@@ -153,8 +176,12 @@ app.get("/countries/:name", async (req, res) => {
 app.delete("/countries/:name", async (req, res) => {
    try {
       const name = req.params.name;
-      const country = await db("countries").where("name", name).del();
-      res.status(200).json(country);
+      const country = await db("countries").where("name", name).select("*");
+      if (country.length === 0) {
+         return res.status(404).json({ "error": "Country not found" });
+      }
+      await db("countries").where("name", name).del();
+      res.status(200).json("Deleted successfully.");
    }
    catch (error) {
       res.status(500).json({ "error": "Failed to delete" });
@@ -178,17 +205,7 @@ app.get("/status", async (req, res) => {
 
 })
 
-app.get("/countries/image", (req, res) => {
-   try {
-      const imagePath = path.join(__dirname, "cache/summary.png");
-      console.log(imagePath);
-      res.sendFile(imagePath);
-   }
-   catch (error) {
-      res.status(500).json({ "error": "Summary image not found" });
-      console.log(error);
-   }
-})
+
 
 
 
