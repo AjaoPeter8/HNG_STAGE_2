@@ -27,77 +27,74 @@ app.use(bodyParser.json());
 app.post("/countries/refresh", async (req, res) => {
    try {
       const response = {};
-         await db.raw('TRUNCATE TABLE countries');
+
+      
+
+      const country_data = await axios.get("https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies");
+      const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
+      const countries = country_data.data;
+      for (const country of countries) {
+         const currency_code = country?.currencies?.map(currency => currency.code)[0] ?? null;
+         const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : null;
+         const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
+         const data = { name: country.name.trim(), capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date() };
+         await db("countries").insert(data).onConflict("name").merge();
+         response[country.name] = data;
+      }
 
 
+      const totalCountries = (await db("countries").count("name as total"))[0].total;
+      const lastRefreshed = new Date();
+      const topCountries = await db("countries")
+         .select("name", "estimated_gdp")
+         .orderBy("estimated_gdp", "desc")
+         .limit(5);
 
-      // const country_data = await axios.get("https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies");
-      // const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
-      // const countries = country_data.data;
-      // for (const country of countries) {
-      //    const currency_code = country?.currencies?.map(currency => currency.code)[0] ?? null;
-      //    const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : null;
-      //    const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
-      //    const data = { name: country.name.trim(), capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date() };
-      //    await db("countries").insert(data).onConflict("name").merge();
-      //    response[country.name] = data;
-      // }
+      // 🖼 Generate image summary
+      const width = 800;
+      const height = 400;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext("2d");
 
+      // Background
+      ctx.fillStyle = "#f0f8ff";
+      ctx.fillRect(0, 0, width, height);
 
-      // const totalCountries = (await db("countries").count("name as total"))[0].total;
-      // const lastRefreshed = new Date();
-      // const topCountries = await db("countries")
-      //    .select("name", "estimated_gdp")
-      //    .orderBy("estimated_gdp", "desc")
-      //    .limit(5);
+      // Title
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 28px Arial";
+      ctx.fillText("🌍 Countries Summary", 250, 50);
 
-      // // 🖼 Generate image summary
-      // const width = 800;
-      // const height = 400;
-      // const canvas = createCanvas(width, height);
-      // const ctx = canvas.getContext("2d");
+      // Total countries
+      ctx.font = "22px Arial";
+      ctx.fillText(`Total Countries: ${totalCountries}`, 80, 120);
 
-      // // Background
-      // ctx.fillStyle = "#f0f8ff";
-      // ctx.fillRect(0, 0, width, height);
-
-      // // Title
-      // ctx.fillStyle = "#000";
-      // ctx.font = "bold 28px Arial";
-      // ctx.fillText("🌍 Countries Summary", 250, 50);
-
-      // // Total countries
-      // ctx.font = "22px Arial";
-      // ctx.fillText(`Total Countries: ${totalCountries}`, 80, 120);
-
-      // // Top 5 GDP countries
-      // ctx.fillText("Top 5 by Estimated GDP:", 80, 170);
-      // ctx.font = "20px Arial";
-      // topCountries.forEach((c, i) => {
-      //    const gdp =
-      //       typeof c.estimated_gdp === "number"
-      //          ? c.estimated_gdp.toFixed(2)
-      //          : Number(c.estimated_gdp || 0).toFixed(2);
-      //    ctx.fillText(`${i + 1}. ${c.name} — ${gdp}`, 100, 210 + i * 30);
-      // });
+      // Top 5 GDP countries
+      ctx.fillText("Top 5 by Estimated GDP:", 80, 170);
+      ctx.font = "20px Arial";
+      topCountries.forEach((c, i) => {
+         const gdp =
+            typeof c.estimated_gdp === "number"
+               ? c.estimated_gdp.toFixed(2)
+               : Number(c.estimated_gdp || 0).toFixed(2);
+         ctx.fillText(`${i + 1}. ${c.name} — ${gdp}`, 100, 210 + i * 30);
+      });
 
 
-      // // Timestamp
-      // ctx.font = "18px Arial";
-      // ctx.fillText(`Last Refreshed: ${lastRefreshed.toLocaleString()}`, 80, 360);
+      // Timestamp
+      ctx.font = "18px Arial";
+      ctx.fillText(`Last Refreshed: ${lastRefreshed.toLocaleString()}`, 80, 360);
 
-      // // Ensure cache directory exists
-      // const cacheDir = path.join(__dirname, "cache");
-      // if (!fs.existsSync(cacheDir)) {
-      //    fs.mkdirSync(cacheDir);
-      // }
-      // const outputPath = path.join(__dirname, "cache", "summary.png");
-      // const buffer = canvas.toBuffer("image/png");
-      // fs.writeFileSync(outputPath, buffer);
+      // Ensure cache directory exists
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) {
+         fs.mkdirSync(cacheDir);
+      }
+      const outputPath = path.join(__dirname, "cache", "summary.png");
+      const buffer = canvas.toBuffer("image/png");
+      fs.writeFileSync(outputPath, buffer);
 
-      // res.status(200).json(response);
-
-      res.status(200).send("Countries refreshed successfully");
+      res.status(200).json(response);
    }
    catch (error) {
       res.status(503).json({ "error": "External data source unavailable", "details": "Could not fetch data from [API name]" });
