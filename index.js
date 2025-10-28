@@ -20,6 +20,15 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 
+app.get("/debug/fix-migrations", async (req, res) => {
+   try {
+      // Remove the problematic migration record
+      await db("knex_migrations").where("name", "20251028234339_remove_duplicate_countries.js").del();
+      res.json({ message: "Migration record removed" });
+   } catch (error) {
+      res.status(500).json({ error: error.message });
+   }
+});
 
 
 
@@ -28,7 +37,7 @@ app.post("/countries/refresh", async (req, res) => {
    try {
       const response = {};
 
-      
+
 
       const country_data = await axios.get("https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies");
       const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
@@ -38,7 +47,17 @@ app.post("/countries/refresh", async (req, res) => {
          const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : null;
          const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
          const data = { name: country.name.trim(), capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date() };
-         await db("countries").insert(data).onConflict("name").merge();
+         // Check if country exists
+         const existing = await db("countries").where("name", data.name).first();
+
+         if (existing) {
+            // Update existing record
+            await db("countries").where("name", data.name).update(data);
+         } else {
+            // Insert new record
+            await db("countries").insert(data);
+         }
+
          response[country.name] = data;
       }
 
@@ -109,11 +128,11 @@ app.get("/countries/image", (req, res) => {
    try {
       const imagePath = path.join(__dirname, "cache/summary.png");
       console.log(imagePath);
-       // Check if file exists
+      // Check if file exists
       if (!fs.existsSync(imagePath)) {
          return res.status(404).json({ "error": "Summary image not found" });
       }
-      
+
       // Set correct content type for PNG image
       res.setHeader('Content-Type', 'image/png');
       res.status(200).json(imagePath);
@@ -126,12 +145,12 @@ app.get("/countries/image", (req, res) => {
 
 app.get("/countries", async (req, res) => {
    try {
-      const {sort, ...filters} = req.query;
+      const { sort, ...filters } = req.query;
       let query = db("countries");
 
       console.log(filters);
       for (const [key, value] of Object.entries(filters)) {
-         const columnName = key === 'currency' ? 'currency_code': key;
+         const columnName = key === 'currency' ? 'currency_code' : key;
          query = query.where(columnName, value);
       }
 
