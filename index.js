@@ -2,8 +2,11 @@ import express from "express";
 import bodyParser from "body-parser";
 import db from "./db.js";
 import axios from "axios";
+import { createCanvas } from "canvas";
+import fs from "fs";
 import knex from "knex";
 import config from "./knexfile.js";
+// import * as res from 'express/lib/response';
 
 const app = express();
 const port = 3000;
@@ -25,9 +28,70 @@ app.post("/countries/refresh", async (req, res) => {
          const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : "null";
          const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
          const data = { name: country.name, capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date().toISOString() };
-         const [id] = await db("countries").insert(data).onConflict("name").merge();
-         response[id] = data;
+         const [name] = await db("countries").insert(data).onConflict("name").merge({
+            capital: db.raw("VALUES(capital)"),
+            region: db.raw("VALUES(region)"),
+            population: db.raw("VALUES(population)"),
+            currency_code: db.raw("VALUES(currency_code)"),
+            exchange_rate: db.raw("VALUES(exchange_rate)"),
+            estimated_gdp: db.raw("VALUES(estimated_gdp)"),
+            flag_url: db.raw("VALUES(flag_url)"),
+            last_refreshed_at: db.raw("VALUES(last_refreshed_at)")
+         });
+         ;
+         response[name] = data;
       }
+
+      const totalCountries = (await db("countries").count("name as total"))[0].total;
+      const lastRefreshed = new Date().toISOString();
+      const topCountries = await db("countries")
+         .select("name", "estimated_gdp")
+         .orderBy("estimated_gdp", "desc")
+         .limit(5);
+
+      // 🖼 Generate image summary
+      const width = 800;
+      const height = 400;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext("2d");
+
+      // Background
+      ctx.fillStyle = "#f0f8ff";
+      ctx.fillRect(0, 0, width, height);
+
+      // Title
+      ctx.fillStyle = "#000";
+      ctx.font = "bold 28px Arial";
+      ctx.fillText("🌍 Countries Summary", 250, 50);
+
+      // Total countries
+      ctx.font = "22px Arial";
+      ctx.fillText(`Total Countries: ${totalCountries}`, 80, 120);
+
+      // Top 5 GDP countries
+      ctx.fillText("Top 5 by Estimated GDP:", 80, 170);
+      ctx.font = "20px Arial";
+      topCountries.forEach((c, i) => {
+         const gdp =
+            typeof c.estimated_gdp === "number"
+               ? c.estimated_gdp.toFixed(2)
+               : Number(c.estimated_gdp || 0).toFixed(2);
+         ctx.fillText(`${i + 1}. ${c.name} — ${gdp}`, 100, 210 + i * 30);
+      });
+
+
+      // Timestamp
+      ctx.font = "18px Arial";
+      ctx.fillText(`Last Refreshed: ${lastRefreshed.toLocaleString()}`, 80, 360);
+
+      // Ensure cache directory exists
+      if (!fs.existsSync("./cache")) {
+         fs.mkdirSync("./cache");
+      }
+
+      const outputPath = "./cache/summary.png";
+      const buffer = canvas.toBuffer("image/png");
+      fs.writeFileSync(outputPath, buffer);
 
       res.status(200).json(response);
    }
@@ -96,6 +160,10 @@ app.get("/status", async (req, res) => {
       console.log(error);
    }
 
+})
+
+app.get("/countries/image", (req, res) => {
+   res.sendFile("./cache/summary.png");
 })
 
 

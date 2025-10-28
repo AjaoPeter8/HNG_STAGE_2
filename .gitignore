@@ -2,3 +2,4 @@
 /countries.db
 /db.js
 /knexfile.js
+./migrations
