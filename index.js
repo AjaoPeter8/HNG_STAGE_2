@@ -28,6 +28,8 @@ app.post("/countries/refresh", async (req, res) => {
    try {
       const response = {};
 
+      await db.raw('TRUNCATE TABLE countries');
+
       const country_data = await axios.get("https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies");
       const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
       const countries = country_data.data;
@@ -35,7 +37,7 @@ app.post("/countries/refresh", async (req, res) => {
          const currency_code = country?.currencies?.map(currency => currency.code)[0] ?? null;
          const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : null;
          const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
-         const data = { name: country.name, capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date() };
+         const data = { name: country.name.trim(), capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date() };
          await db("countries").insert(data).onConflict("name").merge();
          response[country.name] = data;
       }
@@ -105,13 +107,28 @@ app.post("/countries/refresh", async (req, res) => {
 
 app.get("/countries", async (req, res) => {
    try {
-      const filters = req.query;
+      const {sort, ...filters} = req.query;
       let query = db("countries");
 
       console.log(filters);
       for (const [key, value] of Object.entries(filters)) {
-         query = query.where(key, value);
+         const columnName = key === 'currency' ? 'currency_code': key;
+         query = query.where(columnName, value);
       }
+
+      // Apply sorting
+      if (sort) {
+         if (sort === 'gdp_desc') {
+            query = query.orderBy('estimated_gdp', 'desc');
+         } else if (sort === 'gdp_asc') {
+            query = query.orderBy('estimated_gdp', 'asc');
+         } else if (sort === 'name_asc') {
+            query = query.orderBy('name', 'asc');
+         } else if (sort === 'name_desc') {
+            query = query.orderBy('name', 'desc');
+         }
+      }
+
       const countries = await query.select("*");
       res.status(200).send(countries);
    }
