@@ -32,8 +32,8 @@ app.post("/countries/refresh", async (req, res) => {
       const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
       const countries = country_data.data;
       for (const country of countries) {
-         const currency_code = country?.currencies?.map(currency => currency.code)[0] ?? "null";
-         const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : "null";
+         const currency_code = country?.currencies?.map(currency => currency.code)[0] ?? null;
+         const exchange_rate = currency_code ? exchange_rates.data.rates[currency_code] : null;
          const estimated_gdp = exchange_rate ? (country.population * (1000 + Math.random() * 1000)) / exchange_rate : 0;
          const data = { name: country.name, capital: country.capital, region: country.region, population: country.population, currency_code: currency_code, exchange_rate: exchange_rate, estimated_gdp: estimated_gdp, flag_url: country.flag, last_refreshed_at: new Date() };
          await db("countries").insert(data).onConflict("name").merge();
