@@ -34,7 +34,7 @@ app.post("/countries/refresh", async (req, res) => {
       }
 
       const totalCountries = (await db("countries").count("name as total"))[0].total;
-      const lastRefreshed = new Date().toISOString();
+      const lastRefreshed = new Date();
       const topCountries = await db("countries")
          .select("name", "estimated_gdp")
          .orderBy("estimated_gdp", "desc")
