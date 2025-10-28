@@ -27,7 +27,7 @@ app.use(bodyParser.json());
 app.post("/countries/refresh", async (req, res) => {
    try {
       const response = {};
-        await db("countries").del();
+         await db.raw('TRUNCATE TABLE countries');
 
 
 
