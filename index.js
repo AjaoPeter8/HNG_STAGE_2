@@ -20,24 +20,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 
-app.get("/debug/fix-migrations", async (req, res) => {
-   try {
-      // Remove the problematic migration record
-      await db("knex_migrations").where("name", "20251028234339_remove_duplicate_countries.js").del();
-      res.json({ message: "Migration record removed" });
-   } catch (error) {
-      res.status(500).json({ error: error.message });
-   }
-});
-
-
-
 
 app.post("/countries/refresh", async (req, res) => {
    try {
       const response = {};
-
-
 
       const country_data = await axios.get("https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies");
       const exchange_rates = await axios.get("https://open.er-api.com/v6/latest/USD");
