@@ -168,11 +168,11 @@ app.get("/countries", async (req, res) => {
 app.get("/countries/:name", async (req, res) => {
    try {
       const name = req.params.name;
-      const country = await db("countries").where("name", name).select("*")[0];
+      const country = await db("countries").where("name", name).select("*");
       if (country.length === 0) {
          return res.status(404).json({ "error": "Country not found" });
       }
-      res.status(200).json(country);
+      res.status(200).json(country[0]);
    }
    catch (error) {
       res.status(404).json({ "error": "data" });
